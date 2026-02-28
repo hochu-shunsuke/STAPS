@@ -3,7 +3,10 @@ export interface WorkerParams {
     age: number;
     basicPension: number; // 老齢基礎年金（年額） - 支給停止の対象外
     employeePension: number; // 老齢厚生年金（年額） - 在職老齢年金の支給停止対象
+    spouseAllowance?: number; // 配偶者加給年金（年額） - 支給停止の対象外
     hourlyWage: number;
+    wageAt60?: number; // 60歳到達時の月額賃金
+    annualBonus?: number; // 直近1年間の賞与総額
     // 書類からの抽出データ
     payslip?: {
         baseSalary: number;
@@ -72,17 +75,17 @@ export function simulateNetIncome(params: WorkerParams): SimulationResult[] {
 
     const monthlyBasicPension = params.basicPension / 12;
     const monthlyEmployeePension = params.employeePension / 12;
-    const totalMonthlyPension = monthlyBasicPension + monthlyEmployeePension;
+    // 配偶者加給年金（カットされない年金）を加算
+    const monthlySpouseAllowance = (params.spouseAllowance || 0) / 12;
+    const totalMonthlyPension = monthlyBasicPension + monthlyEmployeePension + monthlySpouseAllowance;
 
-    // 高年齢雇用継続給付金の60歳時賃金（みなし）を逆算
-    let assumedAge60Wage = 0;
-    if (params.continuedBenefitsNotice) {
-        // 現在の支給率が15%の場合、現在の給与は60歳時の61%以下だったと推測される
-        // ざっくりと (支給額 / 0.15) / 0.61 = 60歳時賃金 とおく
+    // 高年齢雇用継続給付金の60歳時賃金
+    // 直接入力されていればそれを使用し、なければ逆算する
+    let assumedAge60Wage = params.wageAt60 || 0;
+    if (assumedAge60Wage === 0 && params.continuedBenefitsNotice) {
         if (params.continuedBenefitsNotice.paymentRate === 15) {
             assumedAge60Wage = (params.continuedBenefitsNotice.paymentAmount / 0.15) / 0.61;
         } else {
-            // 中間率の場合の複雑な逆算は省略し、現在給与から近似
             assumedAge60Wage = (params.continuedBenefitsNotice.paymentAmount / (params.continuedBenefitsNotice.paymentRate / 100)) / 0.7;
         }
     }
@@ -94,16 +97,23 @@ export function simulateNetIncome(params: WorkerParams): SimulationResult[] {
         const monthlyGrossWage = hours * params.hourlyWage * WEEKS_PER_MONTH;
         const yearlyGrossWage = monthlyGrossWage * 12;
 
-        // 1. 在職老齢年金の計算（2026年基準: 65万円）
-        // ※老齢基礎年金は停止対象外。老齢厚生年金（報酬比例部分）のみ対象。
+        // 1. 在職老齢年金の計算 (月額50万円基準)
+        // ※老齢基礎年金・配偶者加給年金は停止対象外。老齢厚生年金（報酬比例部分）のみ対象。
         let reductionAmount = 0;
-        if (monthlyGrossWage + monthlyEmployeePension > 650_000) {
-            reductionAmount = ((monthlyGrossWage + monthlyEmployeePension) - 650_000) / 2;
+
+        // 総報酬月額相当額 = その月の標準報酬月額 + (その月以前1年間の標準賞与額等の総額 ÷ 12)
+        // ※ここでは簡易的に月額給与を標準報酬月額の代わりに使用
+        const bonusMonthlyEquivalent = (params.annualBonus || 0) / 12;
+        const totalRemunerationMonthly = monthlyGrossWage + bonusMonthlyEquivalent;
+
+        if (totalRemunerationMonthly + monthlyEmployeePension > 500_000) {
+            reductionAmount = ((totalRemunerationMonthly + monthlyEmployeePension) - 500_000) / 2;
             if (reductionAmount > monthlyEmployeePension) {
                 reductionAmount = monthlyEmployeePension; // 停止額の上限は老齢厚生年金額
             }
         }
 
+        // 実際の支給年金月額
         const actualMonthlyPension = totalMonthlyPension - reductionAmount;
 
         // 2. 高年齢雇用継続給付金の計算

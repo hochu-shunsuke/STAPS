@@ -19,7 +19,10 @@ const mockEmployees: Employee[] = [
     age: 66,
     basicPension: 780000,
     employeePension: 650000,
+    spouseAllowance: 400000, // 配偶者加給年金あり
     hourlyWage: 1250,
+    wageAt60: 250000, // 高年齢雇用継続給付金の計算ベース
+    annualBonus: 300000, // 年金カットの計算ベース
     currentWeeklyHours: 20,
     payslip: {
       baseSalary: 108333,
@@ -47,6 +50,8 @@ const mockEmployees: Employee[] = [
     basicPension: 0, // 65歳未満のため特別支給の老齢厚生年金のみと仮定
     employeePension: 1100000,
     hourlyWage: 1150,
+    wageAt60: 220000,
+    annualBonus: 200000,
     currentWeeklyHours: 28,
     payslip: {
       baseSalary: 139533,
@@ -66,7 +71,10 @@ const mockEmployees: Employee[] = [
     age: 70,
     basicPension: 780000,
     employeePension: 1400000,
+    spouseAllowance: 400000,
     hourlyWage: 1500,
+    wageAt60: 300000,
+    annualBonus: 0,
     currentWeeklyHours: 15,
   },
   {
@@ -75,7 +83,10 @@ const mockEmployees: Employee[] = [
     age: 68,
     basicPension: 780000,
     employeePension: 1800000, // 年金が多め
+    spouseAllowance: 0,
     hourlyWage: 2000, // 時給高め：在職老齢年金の停止に引っかかりやすい
+    wageAt60: 450000,
+    annualBonus: 1200000, // 賞与が多いため、年金が停止しやすい
     currentWeeklyHours: 35, // 働きすぎで年金が止まり、働き損が起きているケース
   },
   {
@@ -85,6 +96,8 @@ const mockEmployees: Employee[] = [
     basicPension: 0,
     employeePension: 600000,
     hourlyWage: 1100,
+    wageAt60: 150000,
+    annualBonus: 100000,
     currentWeeklyHours: 25, // 130万の壁・20時間の壁に直面するケース
   }
 ];
